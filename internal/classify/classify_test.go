@@ -16,6 +16,8 @@ func TestVendoredCatalogClassifies(t *testing.T) {
 		"/Users/x/Library/Application Support/Google/Chrome/Default/Login Data": "browser_state",
 		"/Users/x/vault.kdbx":                                                   "password_store",
 		"/Users/x/.git-credentials":                                             "developer_secret",
+		"/Users/x/.openai/auth.json":                                            "credentials", // heuristic name glob
+		"/Users/x/project/.env":                                                 "credentials",
 	}
 	for path, want := range cases {
 		labels := c.Classify(path)

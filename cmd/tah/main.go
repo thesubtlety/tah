@@ -1,13 +1,14 @@
 // Command tah: collect a per-host behavioral memory and investigate it.
+// All commands share ~/.tah/tah.db by default (override with --db).
 //
-//	tah collect  --db tah.db [--stdin]           # eslogger NDJSON in (stdin, or spawn eslogger on macOS)
-//	tah snapshot --db tah.db                      # seed pre-existing processes (cold-start)
-//	tah scan     --db tah.db [--python python3] [--script presidio/presidio_scan.py]
-//	tah query    <readers|net> --db tah.db [--since 24h]
-//	tah rank     --db tah.db [--since 24h]        # processes ranked by behavioral change
-//	tah report   --db tah.db [--since 24h]        # all questions at once
-//	tah watch    --db tah.db [--since 24h] [--interval 5s]
-//	tah caps     --db tah.db
+//	tah collect   [--stdin]              # the daemon: eslogger + net/DNS + PII scan
+//	tah snapshot                         # seed pre-existing processes (cold start)
+//	tah status                           # counts + last activity (is it capturing?)
+//	tah report    [--since 24h]          # all investigation questions at once
+//	tah rank      [--since 24h]          # processes ranked by behavioral change
+//	tah watch     [--interval 5s]        # live view
+//	tah scan                             # drain the PII content-scan queue
+//	tah query <readers|net> | caps
 package main
 
 import (
@@ -16,6 +17,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -55,13 +57,15 @@ func main() {
 		cmdWatch(args)
 	case "caps":
 		cmdCaps(args)
+	case "status":
+		cmdStatus(args)
 	default:
 		usage()
 	}
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: tah <collect|snapshot|scan|net-poll|dns-stream|query|rank|report|watch|caps> ...")
+	fmt.Fprintln(os.Stderr, "usage: tah <collect|snapshot|scan|status|query|rank|report|watch|caps> ...")
 	os.Exit(2)
 }
 
@@ -81,8 +85,21 @@ func hasFlag(args []string, name string) bool {
 	}
 	return false
 }
+
+// defaultDBPath is a stable absolute location so `collect` and `report` share
+// one database regardless of the directory each is run from.
+func defaultDBPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return "tah.db"
+	}
+	dir := filepath.Join(home, ".tah")
+	_ = os.MkdirAll(dir, 0o700)
+	return filepath.Join(dir, "tah.db")
+}
+
 func openDB(args []string) *store.Store {
-	st, err := store.Open(flagVal(args, "db", "tah.db"))
+	st, err := store.Open(flagVal(args, "db", defaultDBPath()))
 	must(err)
 	return st
 }
@@ -386,6 +403,25 @@ func cmdCaps(args []string) {
 	for _, c := range caps {
 		fmt.Printf("%-12s  %-9v  %-8s  %s\n", c.Relation, c.Available, c.Fidelity, c.Source)
 	}
+}
+
+func cmdStatus(args []string) {
+	st := openDB(args)
+	defer st.Close()
+	s, err := st.Stats()
+	must(err)
+	fmt.Printf("db: %s\n", flagVal(args, "db", defaultDBPath()))
+	fmt.Printf("nodes:   %d proc, %d file, %d ip, %d domain\n", s.Procs, s.Files, s.IPs, s.Domains)
+	fmt.Printf("edges:   %d total, %d sensitive reads flagged\n", s.Edges, s.SensitiveReads)
+	fmt.Printf("scan:    %d files queued, %d PII findings recorded\n", s.QueuedScans, s.NotifyFindings)
+	if s.LastSeenMS == 0 {
+		fmt.Println("activity: none yet — is `tah collect` running against this db?")
+		return
+	}
+	last := time.UnixMilli(s.LastSeenMS)
+	fmt.Printf("activity: first %s, last %s (%s ago)\n",
+		time.UnixMilli(s.FirstSeenMS).Format("15:04:05"), last.Format("15:04:05"),
+		time.Since(last).Round(time.Second))
 }
 
 func must(err error) {

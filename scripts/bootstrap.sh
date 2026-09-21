@@ -20,13 +20,14 @@ fi
 cat <<'NOTE'
 
 Run it — ONE daemon does collection + net/DNS + PII scan:
-  sudo ./bin/tah snapshot --db tah.db      # once: seed pre-existing state
-  sudo ./bin/tah collect  --db tah.db      # the daemon; leave it running
+  sudo ./bin/tah snapshot      # once: seed pre-existing state
+  sudo ./bin/tah collect       # the daemon; leave it running
+  ./bin/tah status             # confirm it is capturing
 
 Look at it — read-only, any time, no sudo, no extra daemon:
-  ./bin/tah report --db tah.db
-  ./bin/tah watch  --db tah.db             # live view
-  ./bin/tah rank   --db tah.db
+  ./bin/tah report
+  ./bin/tah watch              # live view
+  ./bin/tah rank  
 
 Full Disk Access (eslogger needs it) is a GUI/MDM grant — there is no pure-CLI
 way to turn it on. On a headless/remote Mac:
