@@ -7,7 +7,8 @@
 //	tah report    [--since 24h]          # all investigation questions at once
 //	tah rank      [--since 24h]          # processes ranked by behavioral change
 //	tah watch     [--interval 5s]        # live view
-//	tah scan                             # drain the PII content-scan queue
+//	tah scan                             # drain the content-recognition queue
+//	tah selftest                         # known-bad check: does detection work here?
 //	tah query <readers|net> | caps
 package main
 
@@ -63,6 +64,8 @@ func main() {
 		cmdStatus(args)
 	case "recognize":
 		cmdRecognize(args)
+	case "selftest":
+		cmdSelftest(args)
 	default:
 		usage()
 	}
@@ -99,8 +102,65 @@ func redactSecret(s string) string {
 	return s[:4] + "…" + s[len(s)-2:]
 }
 
+// cmdSelftest plants known-bad artifacts and runs them through the real detection
+// pipeline (in a throwaway db, no root/eslogger needed), then checks the flagship
+// flags them. A "does detection actually work on this machine" smoke test.
+func cmdSelftest(args []string) {
+	dir, err := os.MkdirTemp("", "tah-selftest")
+	must(err)
+	defer os.RemoveAll(dir)
+
+	st, err := store.Open(filepath.Join(dir, "selftest.db"))
+	must(err)
+	defer st.Close()
+
+	const evil = "/tmp/evil"                             // an "unexpected" reader
+	catalogFile := "/Users/tahselftest/.aws/credentials" // known-bad by PATH
+	contentFile := filepath.Join(dir, "loot.txt")        // known-bad by CONTENT
+	must(os.WriteFile(contentFile, []byte("token = ghp_012345678901234567890123456789abcdef\n"), 0o600))
+
+	read := func(path string) {
+		must(st.Apply(event.Event{
+			TS: time.Now().UnixMilli(), Sensor: "selftest", Fidelity: "high", Kind: event.Open,
+			Actor: event.Actor{PID: 66613, PIDVersion: 1}, Identity: event.Identity{ExecPath: evil},
+			Path: path, Read: true,
+		}))
+	}
+	read(catalogFile) // path catalog path
+	read(contentFile) // unknown path, recognized by content
+	if _, _, err := scan.Drain(st, nil, 10); err != nil {
+		must(err)
+	}
+
+	fs, err := st.UnexpectedCredentialReaders(0)
+	must(err)
+	flagged := map[string]string{}
+	for _, f := range fs {
+		flagged[f.File] = f.Class + "/" + f.Family
+	}
+
+	ok := true
+	check := func(name, file string) {
+		if cls, hit := flagged[file]; hit {
+			fmt.Printf("  [PASS] %-20s %s  [%s]\n", name, file, cls)
+		} else {
+			ok = false
+			fmt.Printf("  [FAIL] %-20s %s  NOT flagged\n", name, file)
+		}
+	}
+	fmt.Println("tah selftest — planting known-bad reads by an unexpected process:")
+	check("content recognition", contentFile)
+	check("path catalog", catalogFile)
+	if ok {
+		fmt.Println("selftest OK — detection pipeline works")
+	} else {
+		fmt.Println("selftest FAILED")
+		os.Exit(1)
+	}
+}
+
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: tah <collect|snapshot|scan|recognize|status|query|rank|report|watch|caps> ...")
+	fmt.Fprintln(os.Stderr, "usage: tah <collect|snapshot|scan|recognize|selftest|status|query|rank|report|watch|caps> ...")
 	os.Exit(2)
 }
 

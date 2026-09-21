@@ -36,8 +36,11 @@ sudo ./bin/tah collect            # THE daemon; leave it running
 ./bin/tah rank                    # lineages by behavioral-neighborhood change
 ```
 
-Quick check that detection fires: `cat ~/.aws/credentials` (a known credential
-path), then `./bin/tah report` — the read shows up as an unexpected reader.
+Quick known-bad check (no daemon, no root): `./bin/tah selftest` plants a
+credential by content and by path, runs an unexpected read through the real
+pipeline, and confirms both are flagged. Use it to verify detection works on this
+machine. For a live check, with `collect` running: `cat ~/.aws/credentials`, then
+`./bin/tah report`.
 
 Full Disk Access (eslogger needs it) is a GUI or MDM grant — there is no
 pure-CLI way. Headless/remote: screen-share once to add the binary in System
