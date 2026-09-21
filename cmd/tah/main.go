@@ -17,6 +17,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -120,22 +121,56 @@ func hasFlag(args []string, name string) bool {
 	return false
 }
 
-// defaultDBPath is a stable absolute location so `collect` and `report` share
-// one database regardless of the directory each is run from.
+// defaultDBPath is a stable absolute location so every command shares one
+// database. It resolves the INVOKING user's home even under sudo, so
+// `sudo tah collect` and a non-root `tah status` point at the same file.
 func defaultDBPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
+	home := realUserHome()
+	if home == "" {
 		return "tah.db"
 	}
 	dir := filepath.Join(home, ".tah")
-	_ = os.MkdirAll(dir, 0o700)
+	_ = os.MkdirAll(dir, 0o755)
 	return filepath.Join(dir, "tah.db")
 }
 
+func realUserHome() string {
+	if su := os.Getenv("SUDO_USER"); su != "" && su != "root" {
+		if u, err := user.Lookup(su); err == nil {
+			return u.HomeDir
+		}
+	}
+	h, _ := os.UserHomeDir()
+	return h
+}
+
+func dbPath(args []string) string { return flagVal(args, "db", defaultDBPath()) }
+
 func openDB(args []string) *store.Store {
-	st, err := store.Open(flagVal(args, "db", defaultDBPath()))
+	st, err := store.Open(dbPath(args))
 	must(err)
 	return st
+}
+
+// handBackDB gives the db files back to the invoking user after a root command
+// creates them, so a later non-root `tah status`/`report` can open the WAL db.
+func handBackDB(path string) {
+	if os.Geteuid() != 0 {
+		return
+	}
+	su := os.Getenv("SUDO_USER")
+	if su == "" || su == "root" {
+		return
+	}
+	u, err := user.Lookup(su)
+	if err != nil {
+		return
+	}
+	uid, _ := strconv.Atoi(u.Uid)
+	gid, _ := strconv.Atoi(u.Gid)
+	for _, p := range []string{filepath.Dir(path), path, path + "-wal", path + "-shm"} {
+		_ = os.Chown(p, uid, gid)
+	}
 }
 func window(args []string) (int64, string) {
 	since := flagVal(args, "since", "24h")
@@ -151,6 +186,7 @@ func cmdCollect(args []string) {
 	st := openDB(args)
 	defer st.Close()
 	must(st.InitDefaultCaps())
+	handBackDB(dbPath(args)) // let a later non-root `tah status` read this db
 
 	var src io.Reader = os.Stdin
 	if !hasFlag(args, "stdin") && runtime.GOOS == "darwin" {
@@ -195,14 +231,26 @@ func startScanLoop(st *store.Store, args []string) {
 	fmt.Fprintf(os.Stderr, "content-recognition loop every %s (creds%s)\n", iv, map[bool]string{true: " + PII", false: ""}[pii != nil])
 }
 
-// piiScanner returns a Presidio scanner if importable, else nil.
+// piiScanner returns a Presidio scanner if importable, else nil. Presidio is
+// optional and off unless installed (bootstrap.sh --presidio puts it in a venv,
+// which is auto-detected here).
 func piiScanner(args []string) scan.Scanner {
-	python := flagVal(args, "python", "python3")
+	python := flagVal(args, "python", defaultPython())
 	script := flagVal(args, "script", "presidio/presidio_scan.py")
 	if exec.Command(python, "-c", "import presidio_analyzer").Run() != nil {
 		return nil
 	}
 	return scan.PresidioScanner{Python: python, Script: script}
+}
+
+// defaultPython prefers a bootstrap-created venv, else the system python3.
+func defaultPython() string {
+	for _, p := range []string{"presidio/.venv/bin/python3", "presidio/.venv/bin/python", ".venv/bin/python3"} {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return "python3"
 }
 
 // startNetDNS launches the macOS network (lsof poll) and DNS (mDNSResponder log
@@ -266,6 +314,7 @@ func cmdDNSStream(args []string) {
 func cmdSnapshot(args []string) {
 	st := openDB(args)
 	defer st.Close()
+	handBackDB(dbPath(args))
 	st.ProvTier = "snapshot"
 	ts := time.Now().UnixMilli()
 	out, err := exec.Command("ps", "ax", "-o", "pid=,ppid=,command=").Output()

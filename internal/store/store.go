@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/thesubtlety/tah/internal/classify"
 	"github.com/thesubtlety/tah/internal/event"
@@ -40,6 +42,11 @@ type Store struct {
 }
 
 func Open(path string) (*Store, error) {
+	// Ensure the parent directory exists so a first-run open of an absolute path
+	// doesn't fail with SQLITE_CANTOPEN.
+	if dir := filepath.Dir(path); dir != "" && dir != "." {
+		_ = os.MkdirAll(dir, 0o755)
+	}
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
