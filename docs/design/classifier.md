@@ -8,12 +8,18 @@ path+inode, producing two axes: **class** (`credentials`, `browser_state`,
 content). Stop at the first hit. The ranker weights on both.
 
 1. **Exact-path catalog** — enumerated credential locations. Certain; ships as data.
+   (`internal/classify/catalog.json`, vendored from puck/geiger.)
 2. **Path/name globs** — `**/.ssh/**`, `**/.env*`, `**/*.pem|*.kdbx`, `**/credentials`.
-3. **Magic bytes** — first ~64 bytes: SQLite header, PEM markers, PKCS#12, Office/zip.
-4. **Content keys** — small files: gitleaks/TruffleHog token shapes (`AKIA`, `ghp_`…).
-5. **Entropy/detector** — last resort, size-gated.
+3. **Content recognition** — for unknown files an unexpected reader touches:
+   credentials via the gitleaks library in-process (`internal/recognize`), PII via
+   Presidio (`internal/scan`, optional). This is what catches an arbitrarily-named
+   secret file, so the catalog needn't enumerate every path.
+4. **Magic bytes / entropy** — deferred; content recognition covers the need.
 
-POC ships layers 1–2 only. Rules that matter more than the layers:
+**Built today: 1–3.** Sensitivity is a query-time property (any `object_class`
+row of family rotate/invalidate/notify), so content-recognized secrets surface
+without a catalog entry — the flagship ranks, it doesn't gate on the path list.
+Rules that matter more than the layers:
 
 - **Classify the object, not the event** — cache by path+inode; the hot path stays metadata.
 - **Reading content to classify is fine** — just exclude the daemon's own pid so its
@@ -74,5 +80,6 @@ analyst can confirm/deny an expected-reader relationship → a tenant exception 
 - **[data]** No enforcement (watch, not block) — but edges carry novelty/class/tier/
   fidelity/lineage, so an alert is derivable. "Not detection" is positioning, not a limit.
 - **[scope]** Native ES client (using eslogger), real net/DNS sensors (using pollers),
-  Windows, magic-byte + PII layers in the classifier, ML, the shipped global prior.
+  Windows, magic-byte/entropy layers, ML, the shipped global prior. (Content credential
+  + PII recognition is built; PII needs the optional Presidio install.)
 - **[gap]** DoH/DoT & app-embedded resolvers — DNS blind spot on both OSes, unfixable.

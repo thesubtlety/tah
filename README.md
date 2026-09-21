@@ -12,39 +12,29 @@ process relationships that changed most, especially around sensitive resources,
 and show the evidence.* **Not a detector** — behavioral change isn't malice and
 malice isn't always change. See [risks & eval](docs/design/risks-and-eval.md).
 
-## Build
+## Getting started
+
+Requires Go 1.27+ (`brew install go`). Live capture is macOS; the detection logic
+runs anywhere.
 
 ```
-go build -o bin/tah ./cmd/tah      # Go 1.27+
-go test ./...
-make demo                          # end-to-end on the bundled fixture, no macOS needed
+scripts/bootstrap.sh        # build ./bin/tah  (PII/Presidio optional, off by default)
+./bin/tah selftest          # verify detection works here (no root, no daemon)
+sudo ./bin/tah snapshot     # once: seed pre-existing state (cold start)
+sudo ./bin/tah collect      # the daemon: eslogger + net/DNS + content recognition; leave running
+./bin/tah status            # is it capturing?  (no sudo)
+./bin/tah report            # findings: what changed, unexpected readers, ranked  (no sudo)
 ```
 
-## Run (macOS)
-
-One daemon collects everything (eslogger + network + DNS + PII scan); the rest
-are read-only queries you run whenever, no sudo, no extra daemon. All commands
-share one database at `~/.tah/tah.db` by default (override with `--db`).
-
-```
-scripts/bootstrap.sh              # build (+ optional Presidio)
-sudo ./bin/tah snapshot           # once: seed pre-existing state (cold start)
-sudo ./bin/tah collect            # THE daemon; leave it running
-./bin/tah status                  # is it capturing? counts + last activity
-./bin/tah report                  # every investigation question once
-./bin/tah watch                   # live view
-./bin/tah rank                    # lineages by behavioral-neighborhood change
-```
-
-Quick known-bad check (no daemon, no root): `./bin/tah selftest` plants a
-credential by content and by path, runs an unexpected read through the real
-pipeline, and confirms both are flagged. Use it to verify detection works on this
-machine. For a live check, with `collect` running: `cat ~/.aws/credentials`, then
-`./bin/tah report`.
-
-Full Disk Access (eslogger needs it) is a GUI or MDM grant — there is no
-pure-CLI way. Headless/remote: screen-share once to add the binary in System
-Settings → Privacy & Security → Full Disk Access, or push a PPPC profile via MDM.
+- **Full Disk Access** (eslogger needs it) is a GUI or MDM grant — there is no
+  pure-CLI way. Headless/remote: screen-share once to add the binary in System
+  Settings → Privacy & Security → Full Disk Access, or push a PPPC profile via MDM.
+- One database at `~/.tah/tah.db`, shared between the `sudo` daemon and your
+  non-root queries.
+- **PII (optional):** `scripts/bootstrap.sh --presidio` installs it into a venv;
+  credentials are recognized without it.
+- Poke at it: `./bin/tah recognize <file>…` (content recognition on demand),
+  `./bin/tah watch` (live), `./bin/tah rank`. Run tests: `go test ./...`.
 
 ## How it works
 
@@ -53,10 +43,13 @@ later). The core keeps a compact SQLite edge store — nodes, process lineage,
 rolling day-count windows, multi-label object classification. Ranking scores a
 lineage by its count of *novel relationship classes* (so a browser's 42 new
 domains count once), plus a bonus per sensitive class read by a non-expected
-reader, minus a discount for interpreters and host processes. Content recognition
-runs lazily on files an unexpected reader touched: credentials via the gitleaks
-library (the same in-process engine geiger uses — recognition only, no liveness),
-PII via Presidio. Sensitivity is decided by what a file *contains*, not only its path.
+reader, minus a discount for interpreters and host processes.
+
+Sensitivity is decided by what a file **contains**, not only its path. When an
+unexpected process reads an unknown file, content recognition runs lazily:
+credentials via the gitleaks library (the in-process engine geiger uses —
+recognition only, no liveness), and PII via Presidio when installed. A small
+catalog of known credential locations is just the cheap fast path.
 
 ## Layout
 
@@ -66,11 +59,12 @@ internal/event     normalized event contract
 internal/eslogger  eslogger NDJSON adapter
 internal/netpoll   lsof network collector
 internal/dnslog    mDNSResponder DNS collector
-internal/classify  path/glob sensitive-object classifier
-internal/scan      Presidio content-scan worker
+internal/classify  sensitive-object classifier (path/glob + scan eligibility)
+internal/recognize credential recognition (gitleaks, in-process)
+internal/scan      content-recognition worker (credentials + optional Presidio PII)
 internal/store     SQLite schema, update path, queries, ranking
-presidio/          presidio_scan.py + requirements
-docs/design/       collection, classifier, schema, risks-and-eval (+ genesis, naming)
+presidio/          optional Presidio PII scanner (venv)
+docs/design/       concept, collection, classifier, schema, risks-and-eval
 ```
 
 ## Status

@@ -90,6 +90,11 @@ Done, tested on Linux:
   edge count — the rework earns its place.
 - **Plumbing test** (`TestPlumbingEndToEnd`): parse → update path → classify → scan
   queue → content scan → every query, in one pass.
+- **Content recognition (addresses threat #4)**: sensitivity is decided by what a
+  file contains — credentials via the gitleaks library in-process, PII via Presidio —
+  not by an enumerated path list. The flagship ranks on `object_class` (any source),
+  so it no longer gates on the catalog. `tah selftest` proves both content and path
+  paths end to end.
 
 Still needs real hosts (can't fake on Linux):
 - benign baseline: discontinuities per host-day across real workloads over weeks.

@@ -213,4 +213,9 @@ WHERE e.relation = 'opened_read'
   );
 ```
 
+`object_class` is populated from both the path catalog and content recognition
+(credentials via gitleaks, PII via Presidio), so this query surfaces a
+content-recognized secret with no catalog entry — sensitivity is ranked, not gated
+on the path list.
+
 C_1d/7d/30d for any edge = `SELECT SUM(count) FROM edge_daycount WHERE …edge… AND day >= :cut`.

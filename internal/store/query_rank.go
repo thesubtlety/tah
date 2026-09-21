@@ -1,6 +1,6 @@
 package store
 
-// Ranking / "what changed" queries — the genesis.md investigation questions, the
+// Ranking / "what changed" queries — the ten investigation questions (docs/design/concept.md), the
 // entry point for the watch/report subcommand.
 
 // NodeRow is a simple node result.

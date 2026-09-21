@@ -46,7 +46,7 @@ reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit" \
 
 ## Network depth needed: shallow
 
-`genesis.md` is edge-level only — "began networking", "new destination". We need just
+The design (concept.md) is edge-level only — "began networking", "new destination". We need just
 originating process + remote endpoint + first-seen (+ DNS name), no payloads, not inline.
 **LuLu** is the reference for doing it properly (`NEFilterDataProvider` sysext, observe half
 only); POC fakes the same edge with `lsof`/mDNSResponder polling.
