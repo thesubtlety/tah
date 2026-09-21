@@ -50,8 +50,10 @@ later). The core keeps a compact SQLite edge store — nodes, process lineage,
 rolling day-count windows, multi-label object classification. Ranking scores a
 lineage by its count of *novel relationship classes* (so a browser's 42 new
 domains count once), plus a bonus per sensitive class read by a non-expected
-reader, minus a discount for interpreters and host processes. PII content
-classification runs lazily via Presidio only on files an unexpected reader touched.
+reader, minus a discount for interpreters and host processes. Content recognition
+runs lazily on files an unexpected reader touched: credentials via the gitleaks
+library (the same in-process engine geiger uses — recognition only, no liveness),
+PII via Presidio. Sensitivity is decided by what a file *contains*, not only its path.
 
 ## Layout
 

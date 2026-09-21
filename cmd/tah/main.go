@@ -27,6 +27,7 @@ import (
 	"github.com/thesubtlety/tah/internal/eslogger"
 	"github.com/thesubtlety/tah/internal/event"
 	"github.com/thesubtlety/tah/internal/netpoll"
+	"github.com/thesubtlety/tah/internal/recognize"
 	"github.com/thesubtlety/tah/internal/scan"
 	"github.com/thesubtlety/tah/internal/store"
 )
@@ -59,13 +60,46 @@ func main() {
 		cmdCaps(args)
 	case "status":
 		cmdStatus(args)
+	case "recognize":
+		cmdRecognize(args)
 	default:
 		usage()
 	}
 }
 
+// cmdRecognize runs content credential recognition over files (a manual probe;
+// the daemon will run this automatically on novel reads).
+func cmdRecognize(args []string) {
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: tah recognize <file>...")
+		os.Exit(2)
+	}
+	for _, path := range args {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			fmt.Printf("%s: %v\n", path, err)
+			continue
+		}
+		creds := recognize.Creds(string(b))
+		if len(creds) == 0 {
+			fmt.Printf("%s: no credentials recognized\n", path)
+			continue
+		}
+		for _, c := range creds {
+			fmt.Printf("%s: %s (line %d) %s\n", path, c.Type, c.Line, redactSecret(c.Secret))
+		}
+	}
+}
+
+func redactSecret(s string) string {
+	if len(s) <= 8 {
+		return "***"
+	}
+	return s[:4] + "…" + s[len(s)-2:]
+}
+
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: tah <collect|snapshot|scan|status|query|rank|report|watch|caps> ...")
+	fmt.Fprintln(os.Stderr, "usage: tah <collect|snapshot|scan|recognize|status|query|rank|report|watch|caps> ...")
 	os.Exit(2)
 }
 
