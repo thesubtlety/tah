@@ -4,10 +4,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/puck-security/tah/internal/eslogger"
-	"github.com/puck-security/tah/internal/event"
-	"github.com/puck-security/tah/internal/scan"
-	"github.com/puck-security/tah/internal/store"
+	"github.com/thesubtlety/tah/internal/eslogger"
+	"github.com/thesubtlety/tah/internal/event"
+	"github.com/thesubtlety/tah/internal/scan"
+	"github.com/thesubtlety/tah/internal/store"
 )
 
 type fakeScanner struct{}

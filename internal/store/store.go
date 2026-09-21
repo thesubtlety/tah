@@ -9,8 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/puck-security/tah/internal/classify"
-	"github.com/puck-security/tah/internal/event"
+	"github.com/thesubtlety/tah/internal/classify"
+	"github.com/thesubtlety/tah/internal/event"
 	_ "modernc.org/sqlite"
 )
 

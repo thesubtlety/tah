@@ -21,12 +21,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/puck-security/tah/internal/dnslog"
-	"github.com/puck-security/tah/internal/eslogger"
-	"github.com/puck-security/tah/internal/event"
-	"github.com/puck-security/tah/internal/netpoll"
-	"github.com/puck-security/tah/internal/scan"
-	"github.com/puck-security/tah/internal/store"
+	"github.com/thesubtlety/tah/internal/dnslog"
+	"github.com/thesubtlety/tah/internal/eslogger"
+	"github.com/thesubtlety/tah/internal/event"
+	"github.com/thesubtlety/tah/internal/netpoll"
+	"github.com/thesubtlety/tah/internal/scan"
+	"github.com/thesubtlety/tah/internal/store"
 )
 
 func main() {
@@ -113,12 +113,39 @@ func cmdCollect(args []string) {
 		// Network + DNS aren't in Endpoint Security: run the pollers alongside.
 		startNetDNS(st, host, args)
 	}
+	// One daemon does it all: collection + periodic PII scan of queued files.
+	startScanLoop(st, args)
 	n := 0
 	must(eslogger.ParseStream(host, src, func(ev event.Event) error {
 		n++
 		return st.Apply(ev)
 	}))
 	fmt.Fprintf(os.Stderr, "applied %d events\n", n)
+}
+
+// startScanLoop drains the content-scan queue through Presidio on an interval,
+// but only if Presidio is importable — otherwise files stay queued for a later
+// `tah scan`, and we say so once.
+func startScanLoop(st *store.Store, args []string) {
+	python := flagVal(args, "python", "python3")
+	script := flagVal(args, "script", "presidio/presidio_scan.py")
+	if exec.Command(python, "-c", "import presidio_analyzer").Run() != nil {
+		fmt.Fprintln(os.Stderr, "note: Presidio not installed — PII scan queue will fill; run 'tah scan' after setup")
+		return
+	}
+	iv := flagVal(args, "scan-interval", "30s")
+	d, err := time.ParseDuration(iv)
+	if err != nil {
+		d = 30 * time.Second
+	}
+	sc := scan.PresidioScanner{Python: python, Script: script}
+	go func() {
+		for {
+			time.Sleep(d)
+			_, _, _ = scan.Drain(st, sc, 200)
+		}
+	}()
+	fmt.Fprintf(os.Stderr, "PII scan loop every %s\n", iv)
 }
 
 // startNetDNS launches the macOS network (lsof poll) and DNS (mDNSResponder log

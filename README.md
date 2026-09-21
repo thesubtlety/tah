@@ -22,15 +22,21 @@ make demo                          # end-to-end on the bundled fixture, no macOS
 
 ## Run (macOS)
 
+One daemon collects everything (eslogger + network + DNS + PII scan); the rest
+are read-only queries you run whenever, no sudo, no extra daemon.
+
 ```
-scripts/bootstrap.sh                       # Go build + Presidio
-sudo ./bin/tah snapshot --db tah.db        # seed pre-existing state (cold start)
-sudo ./bin/tah collect  --db tah.db        # eslogger + net/DNS pollers (root + Full Disk Access)
-./bin/tah watch  --db tah.db               # live: unexpected reads + behavioral change
+scripts/bootstrap.sh                       # build (+ optional Presidio)
+sudo ./bin/tah snapshot --db tah.db        # once: seed pre-existing state (cold start)
+sudo ./bin/tah collect  --db tah.db        # THE daemon; leave it running
 ./bin/tah report --db tah.db               # every investigation question once
+./bin/tah watch  --db tah.db               # live view
 ./bin/tah rank   --db tah.db               # lineages by behavioral-neighborhood change
-./bin/tah scan   --db tah.db               # Presidio content classification over queued files
 ```
+
+Full Disk Access (eslogger needs it) is a GUI or MDM grant — there is no
+pure-CLI way. Headless/remote: screen-share once to add the binary in System
+Settings → Privacy & Security → Full Disk Access, or push a PPPC profile via MDM.
 
 ## How it works
 

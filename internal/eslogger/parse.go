@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/puck-security/tah/internal/event"
+	"github.com/thesubtlety/tah/internal/event"
 )
 
 // fflag bits (fcntl-style, as ES reports them).

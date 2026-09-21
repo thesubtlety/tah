@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/puck-security/tah/internal/event"
-	"github.com/puck-security/tah/internal/store"
+	"github.com/thesubtlety/tah/internal/event"
+	"github.com/thesubtlety/tah/internal/store"
 )
 
 type fakeScanner map[string][]Finding

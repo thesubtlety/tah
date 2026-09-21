@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/puck-security/tah/internal/store"
+	"github.com/thesubtlety/tah/internal/store"
 )
 
 // Finding is one content-classification result: an entity type with a count.

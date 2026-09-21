@@ -1,20 +1,203 @@
 {
-  "note": "POC seed. Real deployment loads puck brain artifact-catalog.ts exported to JSON.",
+  "note": "vendored from puck artifact-catalog + geiger file_store modules; static data compiled into tah, never loaded from puck at runtime",
   "entries": [
-    { "class": "credentials", "family": "rotate", "source": "catalog",
-      "globs": ["**/.aws/credentials", "**/.aws/config", "**/.config/gcloud/**",
-                "**/.kube/config", "**/.config/gh/hosts.yml", "**/.netrc",
-                "**/.npmrc", "**/.docker/config.json", "**/.vault-token"] },
-    { "class": "private_key", "family": "rotate", "source": "catalog",
-      "globs": ["**/.ssh/id_*", "**/*.pem", "**/*.key", "**/*.p12", "**/*.pfx"] },
-    { "class": "os_credential", "family": "rotate", "source": "catalog",
-      "globs": ["**/Library/Keychains/**"] },
-    { "class": "password_store", "family": "rotate", "source": "catalog",
-      "globs": ["**/*.kdbx"] },
-    { "class": "browser_state", "family": "invalidate", "source": "catalog",
-      "globs": ["**/Library/Application Support/Google/Chrome/**/Login Data",
-                "**/Library/Application Support/Google/Chrome/**/Cookies",
-                "**/.mozilla/firefox/**/logins.json",
-                "**/.mozilla/firefox/**/key4.db"] }
+    {
+      "class": "credentials",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.config/gh/hosts.yml", "**/.config/gh/config.yml"]
+    },
+    {
+      "class": "credentials",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.config/glab-cli/*", "**/.python-gitlab.cfg"]
+    },
+    {
+      "class": "credentials",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.netrc", "**/_netrc", "**/.hgrc", "**/.npmrc"]
+    },
+    {
+      "class": "credentials",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.env", "**/.env.local", "**/.env.production"]
+    },
+    {
+      "class": "credentials",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.docker/config.json"]
+    },
+    {
+      "class": "credentials",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.vault-token", "**/.conjurrc", "**/.akeyless/*"]
+    },
+    {
+      "class": "credentials",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.snowflake/connections.toml", "**/.snowsql/config", "**/.databrickscfg", "**/.oci/config"]
+    },
+    {
+      "class": "credentials",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.atlassian/*", "**/.config/atlassian/*"]
+    },
+    {
+      "class": "private_key",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.ssh/id_*", "**/.ssh/id_rsa", "**/.ssh/id_ed25519", "**/.ssh/identity*", "**/.ssh/*.pem", "**/.ssh/*.key"]
+    },
+    {
+      "class": "private_key",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/*.pem", "**/*.key", "**/*.p12", "**/*.pfx"]
+    },
+    {
+      "class": "private_key",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.gnupg/secring.gpg", "**/.gnupg/private-keys-v1.d/*"]
+    },
+    {
+      "class": "os_credential",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/Library/Keychains/*", "/Library/Keychains/*"]
+    },
+    {
+      "class": "cloud_auth",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.aws/credentials", "**/.aws/config", "**/.aws/sso/cache/*"]
+    },
+    {
+      "class": "cloud_auth",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.config/gcloud/*", "**/.config/gcloud/legacy_credentials/**", "**/.config/gcloud/application_default_credentials.json", "**/gcloud/application_default_credentials.json"]
+    },
+    {
+      "class": "cloud_auth",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.azure/accessTokens.json", "**/.azure/azureProfile.json", "**/.azure/msal_token_cache.json"]
+    },
+    {
+      "class": "cloud_auth",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.kube/config"]
+    },
+    {
+      "class": "browser_state",
+      "family": "invalidate",
+      "source": "catalog",
+      "globs": ["**/Library/Application Support/Google/Chrome/*/Login Data", "**/Library/Application Support/Google/Chrome/*/Cookies", "**/Library/Application Support/Google/Chrome/*/Web Data", "**/.config/google-chrome/*/Login Data", "**/Google/Chrome/User Data/*/Login Data"]
+    },
+    {
+      "class": "browser_state",
+      "family": "invalidate",
+      "source": "catalog",
+      "globs": ["**/Library/Application Support/Microsoft Edge/*/Login Data", "**/Library/Application Support/Microsoft Edge/*/Cookies", "**/.config/microsoft-edge/*/Login Data", "**/Microsoft Edge/User Data/*/Login Data"]
+    },
+    {
+      "class": "browser_state",
+      "family": "invalidate",
+      "source": "catalog",
+      "globs": ["**/Library/Application Support/BraveSoftware/Brave-Browser/*/Login Data", "**/Library/Application Support/BraveSoftware/Brave-Browser/*/Cookies", "**/.config/BraveSoftware/Brave-Browser/*/Login Data"]
+    },
+    {
+      "class": "browser_state",
+      "family": "invalidate",
+      "source": "catalog",
+      "globs": ["**/Library/Application Support/Vivaldi/*/Login Data", "**/.config/vivaldi/*/Login Data"]
+    },
+    {
+      "class": "browser_state",
+      "family": "invalidate",
+      "source": "catalog",
+      "globs": ["**/Library/Application Support/Firefox/Profiles/*/logins.json", "**/Library/Application Support/Firefox/Profiles/*/key4.db", "**/.mozilla/firefox/*/logins.json", "**/.mozilla/firefox/*/key4.db"]
+    },
+    {
+      "class": "password_store",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/*.kdbx", "**/*.kdb"]
+    },
+    {
+      "class": "password_store",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/Library/Application Support/Bitwarden/data.json", "**/.config/Bitwarden/data.json", "**/AppData/Roaming/Bitwarden/data.json"]
+    },
+    {
+      "class": "password_store",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.config/op/*", "**/.op/*", "**/AppData/Local/1Password/*"]
+    },
+    {
+      "class": "developer_secret",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.git-credentials", "**/.config/git/credentials"]
+    },
+    {
+      "class": "developer_secret",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.pypirc"]
+    },
+    {
+      "class": "developer_secret",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.terraform.d/credentials.tfrc.json", "**/terraform.tfstate", "**/*.tfvars"]
+    },
+    {
+      "class": "developer_secret",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.fly/config.yml"]
+    },
+    {
+      "class": "ai_secret",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.cursor/mcp.json", "**/Library/Application Support/Claude/claude_desktop_config.json", "**/.config/Claude/claude_desktop_config.json", "**/AppData/Roaming/Claude/claude_desktop_config.json"]
+    },
+    {
+      "class": "ai_secret",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/Library/Application Support/Cursor/User/globalStorage/state.vscdb", "**/.config/Cursor/User/globalStorage/state.vscdb", "**/Library/Application Support/Code/User/globalStorage/state.vscdb"]
+    },
+    {
+      "class": "ai_secret",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.cursor/*", "**/Library/Application Support/Cursor/*", "**/.config/Cursor/*", "**/AppData/Roaming/Cursor/*"]
+    },
+    {
+      "class": "ai_secret",
+      "family": "rotate",
+      "source": "catalog",
+      "globs": ["**/.continue/*", "**/Library/Application Support/Claude/*", "**/.config/Claude/*"]
+    },
+    {
+      "class": "mail_store",
+      "family": "notify",
+      "source": "catalog",
+      "globs": ["**/Library/Mail/*", "**/Library/Containers/com.apple.mail/*"]
+    }
   ]
 }

@@ -1,4 +1,4 @@
-module github.com/puck-security/tah
+module github.com/thesubtlety/tah
 
 go 1.27.1
 

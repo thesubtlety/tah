@@ -15,7 +15,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/puck-security/tah/internal/event"
+	"github.com/thesubtlety/tah/internal/event"
 )
 
 var queryRe = regexp.MustCompile(`DNSServiceQueryRecord\(\s*\d+,\s*\d+,\s*([^,]+?),\s*(\w+)\)\s+START\s+PID\[(\d+)\]\(([^)]*)\)`)

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/puck-security/tah/internal/eslogger"
-	"github.com/puck-security/tah/internal/event"
+	"github.com/thesubtlety/tah/internal/eslogger"
+	"github.com/thesubtlety/tah/internal/event"
 )
 
 func TestFlagshipUnexpectedReader(t *testing.T) {

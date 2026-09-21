@@ -3,7 +3,7 @@ package eslogger
 import (
 	"testing"
 
-	"github.com/puck-security/tah/internal/event"
+	"github.com/thesubtlety/tah/internal/event"
 )
 
 func TestParseOpen(t *testing.T) {

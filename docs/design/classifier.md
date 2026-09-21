@@ -21,11 +21,14 @@ POC ships layers 1–2 only. Rules that matter more than the layers:
 - **Provenance is free** — `com.apple.quarantine` (macOS) / `Zone.Identifier` (Windows)
   ⇒ came from the internet; separates `user.download` (low weight) from credentials.
 
-## Reuse from puck (don't rebuild the catalog)
+## Vendored from puck / geiger (never loaded at runtime)
 
-| puck asset | What it is | Use |
+Copied FROM once to build tah's self-contained catalog. tah has no runtime
+dependency on puck — `internal/classify/catalog.json` is checked in.
+
+| source | What it is | Use |
 |---|---|---|
-| `brain/.../pathfinder/artifact-catalog.ts` | 8 object classes, Unix+Windows paths, MITRE refs | Export to JSON → our path catalog; adopt its class vocabulary |
+| `brain/.../pathfinder/artifact-catalog.ts` | 8 object classes, Unix+Windows paths, MITRE refs | Vendored into `catalog.json`; class vocabulary adopted |
 | `.../pathfinder/geiger-modules.json` | 175 providers, `file_store` flag | Infostealer-target taxonomy |
 | `.../parse/detectors/library.ts` + `puck-egress/.../detectors.rs` | gitleaks/trufflehog regexes | Content-scan layer (portable to Go) |
 | `shared/secret-corpus.json` | labeled samples | Classifier eval set |

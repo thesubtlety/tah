@@ -1,37 +1,36 @@
 #!/usr/bin/env bash
-# tah macOS first-run setup. Idempotent.
+# tah setup. Idempotent. Presidio is optional — the tool runs without it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "==> Go"
-command -v go >/dev/null || { echo "install Go 1.27+ (https://go.dev/dl) then re-run"; exit 1; }
+command -v go >/dev/null || { echo "Need Go 1.27+   (brew install go)"; exit 1; }
 go build -o bin/tah ./cmd/tah
-echo "    built bin/tah"
+echo "built ./bin/tah"
 
-echo "==> Presidio (content classifier for the scan worker)"
-if command -v python3 >/dev/null; then
-  python3 -m pip install --user -q -r presidio/requirements.txt || \
-    echo "    pip failed; run: python3 -m pip install presidio-analyzer"
-  # NER entities (PERSON/LOCATION/medical) need a spaCy model; regex/checksum
-  # entities (SSN, credit card, IBAN...) work without one. Grab lg if you want NER.
-  python3 -m spacy download en_core_web_lg || \
-    echo "    NER model not installed — regex/checksum PII still works; PERSON/LOCATION won't"
+# Optional: PII content classification. Without it, sensitive files just queue.
+if command -v python3 >/dev/null && python3 -m pip --version >/dev/null 2>&1; then
+  python3 -m pip install --user -q -r presidio/requirements.txt && echo "Presidio installed"
+  python3 -m spacy download en_core_web_lg >/dev/null 2>&1 \
+    && echo "spaCy NER model installed" \
+    || echo "NER model skipped — regex/checksum PII (SSN, cards, IBAN) still works"
 else
-  echo "    python3 not found — 'tah scan' will be a no-op until Presidio is installed"
+  echo "Presidio skipped (optional; needs python3 + pip). PII files queue until installed."
 fi
 
 cat <<'NOTE'
 
-==> Grant access (once), then run:
-    Endpoint Security via eslogger needs root + Full Disk Access.
-    Grant Full Disk Access to your terminal (or the tah binary) in
-    System Settings > Privacy & Security > Full Disk Access.
+Run it — ONE daemon does collection + net/DNS + PII scan:
+  sudo ./bin/tah snapshot --db tah.db      # once: seed pre-existing state
+  sudo ./bin/tah collect  --db tah.db      # the daemon; leave it running
 
-    sudo ./bin/tah snapshot --db tah.db      # seed pre-existing state (cold start)
-    sudo ./bin/tah collect  --db tah.db      # eslogger + net/DNS pollers
-    ./bin/tah watch   --db tah.db            # live odd-activity view
-    ./bin/tah scan    --db tah.db            # run Presidio over queued files
+Look at it — read-only, any time, no sudo, no extra daemon:
+  ./bin/tah report --db tah.db
+  ./bin/tah watch  --db tah.db             # live view
+  ./bin/tah rank   --db tah.db
 
-    For cleartext DNS names, install an mDNSResponder profile with
-    Privacy-Enable-Level = Sensitive (private_data:on alone is NOT enough).
+Full Disk Access (eslogger needs it) is a GUI/MDM grant — there is no pure-CLI
+way to turn it on. On a headless/remote Mac:
+  * screen-share once and add ./bin/tah in
+    System Settings > Privacy & Security > Full Disk Access, or
+  * push a PPPC profile via MDM granting SystemPolicyAllFiles to the binary.
 NOTE

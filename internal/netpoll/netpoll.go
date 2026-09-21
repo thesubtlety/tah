@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/puck-security/tah/internal/event"
+	"github.com/thesubtlety/tah/internal/event"
 )
 
 // Parse converts `lsof -FpcntPT` field output into Connect events (one per
