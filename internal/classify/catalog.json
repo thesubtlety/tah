@@ -1,0 +1,20 @@
+{
+  "note": "POC seed. Real deployment loads puck brain artifact-catalog.ts exported to JSON.",
+  "entries": [
+    { "class": "credentials", "family": "rotate", "source": "catalog",
+      "globs": ["**/.aws/credentials", "**/.aws/config", "**/.config/gcloud/**",
+                "**/.kube/config", "**/.config/gh/hosts.yml", "**/.netrc",
+                "**/.npmrc", "**/.docker/config.json", "**/.vault-token"] },
+    { "class": "private_key", "family": "rotate", "source": "catalog",
+      "globs": ["**/.ssh/id_*", "**/*.pem", "**/*.key", "**/*.p12", "**/*.pfx"] },
+    { "class": "os_credential", "family": "rotate", "source": "catalog",
+      "globs": ["**/Library/Keychains/**"] },
+    { "class": "password_store", "family": "rotate", "source": "catalog",
+      "globs": ["**/*.kdbx"] },
+    { "class": "browser_state", "family": "invalidate", "source": "catalog",
+      "globs": ["**/Library/Application Support/Google/Chrome/**/Login Data",
+                "**/Library/Application Support/Google/Chrome/**/Cookies",
+                "**/.mozilla/firefox/**/logins.json",
+                "**/.mozilla/firefox/**/key4.db"] }
+  ]
+}

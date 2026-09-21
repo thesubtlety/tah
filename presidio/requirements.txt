@@ -1,0 +1,10 @@
+# Presidio content classifier — pin majors, let patches float.
+presidio-analyzer>=2.2,<3
+# spaCy is pulled in transitively by presidio-analyzer, but pin it so the model
+# wheel below matches the runtime.
+spacy>=3.7,<4
+# NER model, installed as a normal pip wheel so it's captured by requirements
+# (no `spacy download` step needed in CI/containers). ~560 MB installed.
+# Drop to en_core_web_md (~45 MB) or en_core_web_sm (~15 MB) to trade accuracy
+# for size; the script auto-selects whichever of lg/md/sm is present.
+en_core_web_lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
