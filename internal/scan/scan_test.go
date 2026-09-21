@@ -1,6 +1,7 @@
 package scan
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -12,6 +13,56 @@ type fakeScanner map[string][]Finding
 
 func (f fakeScanner) Scan(path string) ([]Finding, error) { return f[path], nil }
 
+// TestContentCredentialRecognition proves the full new path: an unexpected process
+// reads an UNKNOWN file (no catalog match) that contains a token; content
+// recognition catches it and the flagship surfaces it — sensitivity from content,
+// not path.
+func TestContentCredentialRecognition(t *testing.T) {
+	st, err := store.Open(filepath.Join(t.TempDir(), "tah.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	secretFile := filepath.Join(t.TempDir(), "config.txt")
+	if err := os.WriteFile(secretFile, []byte("gh_token = ghp_012345678901234567890123456789abcdef\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Apply(event.Event{
+		TS: 1, Sensor: "eslogger", Fidelity: "high", Kind: event.Open,
+		Actor:    event.Actor{PID: 700, PIDVersion: 1},
+		Identity: event.Identity{ExecPath: "/tmp/curl"},
+		Path:     secretFile, Read: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if q, _ := st.QueuedScans(10); len(q) != 1 {
+		t.Fatalf("expected the unknown file queued for recognition, got %+v", q)
+	}
+	if _, _, err := Drain(st, nil, 10); err != nil { // nil = no PII scanner; creds still run
+		t.Fatal(err)
+	}
+	var n int
+	_ = st.DB().QueryRow(`SELECT COUNT(*) FROM object_class WHERE source='geiger' AND family='rotate'`).Scan(&n)
+	if n == 0 {
+		t.Fatal("expected a recognized credential class recorded from content")
+	}
+	fs, err := st.UnexpectedCredentialReaders(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, f := range fs {
+		if f.File == secretFile {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("flagship should surface the content-recognized file, got %+v", fs)
+	}
+}
+
 func TestDrainRecordsPIIAndMarksScanned(t *testing.T) {
 	db := filepath.Join(t.TempDir(), "tah.db")
 	st, err := store.Open(db)
@@ -20,8 +71,9 @@ func TestDrainRecordsPIIAndMarksScanned(t *testing.T) {
 	}
 	defer st.Close()
 
-	// An unexpected reader touches a credentials file → queues a content scan.
-	docPath := "/Users/noah/.aws/credentials"
+	// An unexpected reader touches an UNKNOWN (non-catalogued) file → it queues for
+	// content recognition. (Path-known files don't queue; they're already classified.)
+	docPath := "/Users/noah/Documents/quarterly.txt"
 	if err := st.Apply(event.Event{
 		TS: 1, Sensor: "eslogger", Fidelity: "high", Kind: event.Open,
 		Actor:    event.Actor{PID: 900, PIDVersion: 1},

@@ -174,29 +174,35 @@ func cmdCollect(args []string) {
 	fmt.Fprintf(os.Stderr, "applied %d events\n", n)
 }
 
-// startScanLoop drains the content-scan queue through Presidio on an interval,
-// but only if Presidio is importable — otherwise files stay queued for a later
-// `tah scan`, and we say so once.
+// startScanLoop drains the content-recognition queue on an interval: credential
+// recognition always runs (in-process), PII runs too if Presidio is importable.
 func startScanLoop(st *store.Store, args []string) {
-	python := flagVal(args, "python", "python3")
-	script := flagVal(args, "script", "presidio/presidio_scan.py")
-	if exec.Command(python, "-c", "import presidio_analyzer").Run() != nil {
-		fmt.Fprintln(os.Stderr, "note: Presidio not installed — PII scan queue will fill; run 'tah scan' after setup")
-		return
+	pii := piiScanner(args)
+	if pii == nil {
+		fmt.Fprintln(os.Stderr, "note: Presidio not installed — credentials still recognized; PII off until installed")
 	}
 	iv := flagVal(args, "scan-interval", "30s")
 	d, err := time.ParseDuration(iv)
 	if err != nil {
 		d = 30 * time.Second
 	}
-	sc := scan.PresidioScanner{Python: python, Script: script}
 	go func() {
 		for {
 			time.Sleep(d)
-			_, _, _ = scan.Drain(st, sc, 200)
+			_, _, _ = scan.Drain(st, pii, 200)
 		}
 	}()
-	fmt.Fprintf(os.Stderr, "PII scan loop every %s\n", iv)
+	fmt.Fprintf(os.Stderr, "content-recognition loop every %s (creds%s)\n", iv, map[bool]string{true: " + PII", false: ""}[pii != nil])
+}
+
+// piiScanner returns a Presidio scanner if importable, else nil.
+func piiScanner(args []string) scan.Scanner {
+	python := flagVal(args, "python", "python3")
+	script := flagVal(args, "script", "presidio/presidio_scan.py")
+	if exec.Command(python, "-c", "import presidio_analyzer").Run() != nil {
+		return nil
+	}
+	return scan.PresidioScanner{Python: python, Script: script}
 }
 
 // startNetDNS launches the macOS network (lsof poll) and DNS (mDNSResponder log
@@ -294,11 +300,7 @@ func cmdScan(args []string) {
 	st := openDB(args)
 	defer st.Close()
 	limit, _ := strconv.Atoi(flagVal(args, "limit", "1000"))
-	sc := scan.PresidioScanner{
-		Python: flagVal(args, "python", "python3"),
-		Script: flagVal(args, "script", "presidio/presidio_scan.py"),
-	}
-	processed, failed, err := scan.Drain(st, sc, limit)
+	processed, failed, err := scan.Drain(st, piiScanner(args), limit)
 	must(err)
 	fmt.Printf("scanned %d queued files (%d failed)\n", processed, failed)
 }

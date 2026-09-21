@@ -76,11 +76,12 @@ func TestFlagshipUnexpectedReader(t *testing.T) {
 		t.Errorf("expected 2 sensitive-flagged read edges, got %d", flagged)
 	}
 
-	// scan_requested queued for the flagged files (Presidio hook).
+	// Path-known files are NOT content-queued (no need to read a known credential);
+	// only unknown files queue. Every fixture read is catalogued, so queue is empty.
 	var queued int
 	_ = st.DB().QueryRow(`SELECT COUNT(*) FROM file_object WHERE scan_requested=1`).Scan(&queued)
-	if queued != 2 {
-		t.Errorf("expected 2 files queued for content scan, got %d", queued)
+	if queued != 0 {
+		t.Errorf("expected 0 queued (all fixture files are path-known), got %d", queued)
 	}
 }
 

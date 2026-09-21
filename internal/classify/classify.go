@@ -7,9 +7,34 @@ package classify
 import (
 	_ "embed"
 	"encoding/json"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
+
+// skipExt and skipPrefix keep the content-recognition queue off obvious
+// binaries/media and high-volume system noise. Cheap eligibility, not security.
+var skipExt = map[string]bool{
+	".dylib": true, ".so": true, ".o": true, ".a": true, ".bundle": true,
+	".class": true, ".pyc": true, ".pyo": true, ".wasm": true,
+	".png": true, ".jpg": true, ".jpeg": true, ".gif": true, ".bmp": true,
+	".tiff": true, ".ico": true, ".icns": true, ".webp": true, ".heic": true,
+	".mp3": true, ".mp4": true, ".mov": true, ".avi": true, ".mkv": true,
+	".m4a": true, ".wav": true, ".zip": true, ".gz": true, ".tar": true,
+	".bz2": true, ".xz": true, ".7z": true, ".dmg": true, ".pkg": true,
+	".ttf": true, ".otf": true, ".woff": true, ".woff2": true, ".eot": true,
+}
+var skipPrefix = []string{"/System/", "/usr/lib/", "/usr/share/", "/Library/Caches/", "/private/var/folders/"}
+
+// Scannable reports whether a path is worth reading for content recognition.
+func (c *Classifier) Scannable(path string) bool {
+	for _, p := range skipPrefix {
+		if strings.HasPrefix(path, p) {
+			return false
+		}
+	}
+	return !skipExt[strings.ToLower(filepath.Ext(path))]
+}
 
 //go:embed catalog.json
 var catalogJSON []byte

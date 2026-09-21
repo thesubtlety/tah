@@ -268,16 +268,21 @@ func (s *Store) applyOpen(ev event.Event) error {
 		rel = relOpenedWr
 	}
 	flags := 0
-	if len(labels) > 0 && ev.Read {
-		readerKey := procKey(ev.Identity)
-		unexpected := false
-		for _, l := range labels {
-			if !s.isExpectedReader(l.Class, readerKey) {
-				unexpected = true
+	if ev.Read {
+		switch {
+		case len(labels) > 0:
+			// Path fast-path: a known-sensitive file. Flag an unexpected reader
+			// immediately; no need to read its content.
+			readerKey := procKey(ev.Identity)
+			for _, l := range labels {
+				if !s.isExpectedReader(l.Class, readerKey) {
+					flags |= flagSensitive
+				}
 			}
-		}
-		if unexpected {
-			flags |= flagSensitive
+		case s.cl.Scannable(ev.Path):
+			// Unknown file: queue content recognition (creds + PII). This is how
+			// an arbitrarily-named secret file gets caught — by what it contains,
+			// not by an enumerated path list.
 			_, _ = s.db.Exec(`UPDATE file_object SET scan_requested=1
 WHERE node_id=? AND scan_state<>'content_scanned'`, fileNode)
 		}
