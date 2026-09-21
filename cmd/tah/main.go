@@ -260,11 +260,15 @@ func cmdRank(args []string) {
 	st := openDB(args)
 	defer st.Close()
 	win, since := window(args)
-	rows, err := st.LineageChangeRank(win)
+	rows, err := st.RankLineages(win)
 	must(err)
 	fmt.Printf("processes by behavioral change (last %s):\n", since)
 	for _, r := range rows {
-		fmt.Printf("  %-28s  new-edges=%-3d  sensitive=%d\n", r.Display, r.NewEdges, r.Sensitive)
+		tag := ""
+		if r.Interpreter {
+			tag = " (host/interpreter)"
+		}
+		fmt.Printf("  %-30s score=%-3d classes=%-2d sensitive=%d%s\n", r.Display, r.Score, r.NovelClasses, r.SensitiveClasses, tag)
 	}
 }
 
@@ -297,13 +301,17 @@ func printReport(st *store.Store, win int64) {
 	for _, f := range net {
 		fmt.Printf("  %-26s -> %s [%s]\n", f.Reader, f.File, f.Fidelity)
 	}
-	rank, _ := st.LineageChangeRank(win)
+	rank, _ := st.RankLineages(win)
 	fmt.Printf("[biggest behavioral change]\n")
 	for i, r := range rank {
 		if i >= 10 {
 			break
 		}
-		fmt.Printf("  %-28s new-edges=%-3d sensitive=%d\n", r.Display, r.NewEdges, r.Sensitive)
+		tag := ""
+		if r.Interpreter {
+			tag = " (host/interpreter)"
+		}
+		fmt.Printf("  %-30s score=%-3d classes=%-2d sensitive=%d%s\n", r.Display, r.Score, r.NovelClasses, r.SensitiveClasses, tag)
 	}
 }
 
