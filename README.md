@@ -12,6 +12,35 @@ process relationships that changed most, especially around sensitive resources,
 and show the evidence.* **Not a detector** — behavioral change isn't malice and
 malice isn't always change. See [risks & eval](docs/design/risks-and-eval.md).
 
+## Example
+
+A signed updater spawns an unsigned child that reads your AWS keys, the Chrome
+login store, and a file in Downloads that happens to contain a token. `tah report`:
+
+```
+[unexpected readers of sensitive classes] 3
+  /tmp/.cache/xpdate  read  ~/.aws/credentials                         [cloud_auth/rotate]
+  /tmp/.cache/xpdate  read  ~/…/Chrome/Default/Login Data              [browser_state/invalidate]
+  /tmp/.cache/xpdate  read  ~/Downloads/notes.txt                      [github-pat/rotate]
+[new parent->child] 1
+  /Applications/SoftUpdate.app/…/SoftUpdate  ->  /tmp/.cache/xpdate
+[biggest behavioral change]
+  /tmp/.cache/xpdate  score=7  classes=1  sensitive=3
+  SoftUpdate          score=1  classes=1  sensitive=0
+```
+
+The Downloads file was in no catalog — it was flagged by its *contents* (a
+recognized GitHub token). The unsigned child ranks first: three distinct sensitive
+classes read (`sensitive=3`) versus the signed parent's one benign new relationship
+(`score = novel-classes + 2·sensitive-classes − interpreter-discount`).
+`tah selftest` runs this shape as a built-in check:
+
+```
+  [PASS] content recognition  ~/loot.txt                   [github-pat/rotate]
+  [PASS] path catalog         ~/.aws/credentials            [cloud_auth/rotate]
+selftest OK — detection pipeline works
+```
+
 ## Getting started
 
 Requires Go 1.27+ (`brew install go`). Live capture is macOS; the detection logic
